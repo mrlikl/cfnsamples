@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: jul27test
+Resources:
+  RDS1:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceClass: db.t3.micro
+      DBInstanceIdentifier: myrdsinstance1
+      Engine: mysql
+      PubliclyAccessible: false
+      EngineVersion: "8.0.31"
+      MasterUsername: "muralikl"
+      MasterUserPassword: "test123test"
+      AllocatedStorage: 20
+      CopyTagsToSnapshot: false
+      Tags:
+        - Key: "createdby"
+          Value: "muralikl"

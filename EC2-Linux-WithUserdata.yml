@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "A linux EC2 instance with cfn bootstrap scripts"
+
+Parameters:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+
+  EC2Key:
+    Type: AWS::EC2::KeyPair::KeyName
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet::Id
+
+  ImageId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+
+Resources:
+  MyInstance:
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          commands:
+            create_folder:
+              command: "sudo mkdir /var/hackathon/"
+          files:
+            /var/log/test.txt:
+              content: "Hello world"
+              mode: "000644"
+              owner: "root"
+              group: "root"
+    Properties:
+      InstanceType: t2.medium
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      KeyName: !Ref EC2Key
+      ImageId: !Ref ImageId
+      UserData: !Base64
+        "Fn::Join":
+          - ""
+          - - |
+              #!/bin/bash -x
+            - ""
+              # Install the files and packages from the metadata
+            - "sudo yum install -y aws-cfn-bootstrap"
+            - |+
+
+
+            - "sudo /opt/aws/bin/cfn-init -v "
+            - "         -s "
+            - !Ref "AWS::StackName"
+            - "         -r MyInstance "
+            - "         --region "
+            - !Ref "AWS::Region"
+            - |+
+
+
+              # Signal the status from cfn-init
+            - "/opt/aws/bin/cfn-signal -e $? "
+            - "         --stack "
+            - !Ref "AWS::StackName"
+            - "         --resource MyInstance "
+            - "         --region "
+            - !Ref "AWS::Region"
+            - |+

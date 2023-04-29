@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  LambdaRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "*"
+                Resource: "*"
+  ImportLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.9
+      Role: !GetAtt LambdaRole.Arn
+      Handler: index.lambda_handler
+      Timeout: 900
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import time
+          import cfnresponse
+
+          def lambda_handler(event, context):
+              responseData = {}
+              if event['RequestType'] == 'Delete':
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+                return
+              stack_name = 'your-stack-name'  #we would need to write custom logic to get stack name dynamically
+              client = boto3.client('cloudformation')
+              response = client.create_change_set(
+              StackName=stack_name,
+              TemplateURL='https://test.s3.amazonaws.com/import.yml', #replace with the template url of common bucket
+              ChangeSetName='importChangeSet',
+              ChangeSetType='IMPORT',
+              ResourcesToImport=[
+                  {
+                      'ResourceType': 'AWS::Logs::LogGroup',
+                      'LogicalResourceId': 'LogicalIdOfLogGroup',  #Add the 3 log groups here
+                      'ResourceIdentifier': {
+                          'LogGroupName': '/aws/eks/cluster-name/cluster'   #change to the actual log group name to import
+                      }
+                  },
+              ]
+              )
+              
+              create_status = ''
+
+              while create_status != 'CREATE_COMPLETE':
+                  time.sleep(3)
+                  response = client.describe_change_set(
+                      ChangeSetName='importChangeSet',
+                      StackName = stack_name
+                  )
+                  create_status = response['Status'] 
+              
+              response = client.execute_change_set(
+                  ChangeSetName='importChangeSet',
+                  StackName = stack_name
+              )
+
+              responseData['Status'] = 'Completed'
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+  ImportResource:
+    Type: Custom::ImportResource
+    Properties:
+      ServiceToken: !GetAtt ImportLambda.Arn

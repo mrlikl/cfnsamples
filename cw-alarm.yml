@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: jul27test
+Resources:
+  Throughpututilization052DB3D1:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Metrics:
+        - Expression: ((e1)*100)/(e2)
+          Id: expr_1
+          Label: Throughput utilization (%)
+        - Expression: (m1/1048576)/PERIOD(m1)
+          Id: "e1"
+          ReturnData: false
+        - Id: m1
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: FileSystemId
+                  Value: fs-0da97ab46883e8d3c
+              MetricName: MeteredIOBytes
+              Namespace: AWS/EFS
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Expression: m2/1048576
+          Id: "e2"
+          ReturnData: false
+        - Id: m2
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: FileSystemId
+                  Value: fs-0da97ab46883e8d3c
+              MetricName: PermittedThroughput
+              Namespace: AWS/EFS
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+      Threshold: 75

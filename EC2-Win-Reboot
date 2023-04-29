@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "A windows instance with reboot"
+
+Parameters:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+
+  EC2Key:
+    Type: AWS::EC2::KeyPair::KeyName
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet::Id
+
+  ImageId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-windows-latest/Windows_Server-2022-English-Full-Base
+
+Resources:
+  WindowsServerWaitHandle:
+    Type: "AWS::CloudFormation::WaitConditionHandle"
+  WindowsServerWaitCondition:
+    Type: "AWS::CloudFormation::WaitCondition"
+    DependsOn:
+      - "Ec2Instance"
+    Properties:
+      Handle: !Ref WindowsServerWaitHandle
+      Timeout: "900"
+  Ec2Instance:
+    Type: "AWS::EC2::Instance"
+    Metadata:
+      "AWS::CloudFormation::Init":
+        config:
+          commands:
+            create_folder:
+              command: powershell.exe -Command "New-Item -Path 'C:\test' -ItemType Directory"
+            reboot:
+              command: powershell.exe -Command "Restart-Computer"
+              waitAfterCompletion: "forever"
+            signalsuccess:
+              command: !Join
+                - ""
+                - - cfn-signal.exe -e %ERRORLEVEL% "
+                  - !Base64
+                    Ref: WindowsServerWaitHandle
+                  - '"'
+    Properties:
+      InstanceType: t2.medium
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      KeyName: !Ref EC2Key
+      ImageId: !Ref ImageId
+      UserData: !Base64
+        Fn::Join:
+          - ""
+          - - "<script>\n"
+            - "cfn-init.exe -v -s "
+            - !Ref "AWS::StackId"
+            - " -r Ec2Instance"
+            - " --region "
+            - !Ref "AWS::Region"
+            - "\n"
+            - </script>

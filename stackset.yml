@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  StackSet:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      Capabilities:
+        - CAPABILITY_IAM
+        - CAPABILITY_AUTO_EXPAND
+      Description: Create Cloudfront distro
+      PermissionModel: SELF_MANAGED
+      StackInstancesGroup:
+        - DeploymentTargets:
+            Accounts:
+              - !Ref "AWS::AccountId"
+          Regions:
+            - us-east-1
+      StackSetName: S3-StackSet
+      TemplateURL: s3-bucket.yml
