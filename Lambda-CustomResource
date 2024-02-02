@@ -2,9 +2,7 @@ Resources:
   CustomResource:
     Type: "AWS::CloudFormation::CustomResource"
     Properties:
-      ServiceToken: !GetAtt
-        - CustomResourceLambdaFunction
-        - Arn
+      ServiceToken: !GetAtt CustomResourceLambdaFunction.Arn
 
   CustomResourceLambdaFunction:
     Type: "AWS::Lambda::Function"
@@ -15,20 +13,24 @@ Resources:
           import boto3
           import cfnresponse
           def handler(event, context):
-              responseData = {}
+              responseData = {} #optional
               print(event)
               if event['RequestType'] == 'Delete':
+                  # boto3 logic
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+                  return    
+              if event['RequestType'] == 'Update':
+                  # boto3 logic
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
                   return
-              
-              #logic
-
+              if event['RequestType'] == 'Create':
+                  # boto3 logic
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+                  return
               responseData['Result'] = 'Completed'
               cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
       Handler: index.handler
-      Role: !GetAtt
-        - LambdaExecutionRole
-        - Arn
+      Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Timeout: "300"
 
@@ -50,6 +52,4 @@ Resources:
 
 Outputs:
   Result:
-    Value: !GetAtt
-      - CustomResource
-      - Result
+    Value: !GetAtt CustomResource.Result
